@@ -1,0 +1,67 @@
+# Runs the MuscleHut Ashford busy monitor for free, 24/7, on GitHub's runners.
+# Goes in your repo at:  .github/workflows/monitor.yml
+#
+# - Every 15 minutes: logs live attendance (+ today's hour curve) and
+#   commits the growing CSVs to the repo.
+# - Sundays 23:00 UK: regenerates REPORT.md with the heatmap and the
+#   quietest-slots ranking from all logged data.
+# - "Run workflow" button in the Actions tab does a log + report manually.
+
+name: MuscleHut busy monitor
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 minutes: log a sample
+    - cron: "0 23 * * 0"     # Sundays 23:00 UTC: weekly report
+  workflow_dispatch: {}      # enables the manual "Run workflow" button
+
+# Serialize runs so a delayed run never races another to git push.
+concurrency:
+  group: gym-monitor
+  cancel-in-progress: false
+
+permissions:
+  contents: write            # lets the workflow commit the logs back
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Log live attendance (15-minute schedule runs)
+        if: github.event_name != 'workflow_dispatch' && github.event.schedule != '0 23 * * 0'
+        run: python gym_busy_monitor.py snapshot --csv data/gym_busy.csv
+
+      - name: Weekly report (Sunday runs)
+        if: github.event_name == 'schedule' && github.event.schedule == '0 23 * * 0'
+        run: |
+          {
+            echo "# MuscleHut Ashford - quietest training times"
+            echo
+            python gym_busy_monitor.py report --csv data/gym_busy.csv
+          } | tee REPORT.md
+
+      - name: Manual runs do both
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          {
+            echo "# MuscleHut Ashford - quietest training times"
+            echo
+            python gym_busy_monitor.py snapshot --csv data/gym_busy.csv
+            python gym_busy_monitor.py report --csv data/gym_busy.csv
+          } | tee REPORT.md
+
+      - name: Commit updated logs
+        run: |
+          git config user.name "gym-monitor-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data REPORT.md
+          git diff --cached --quiet && echo "nothing to commit" && exit 0
+          git commit -m "monitor: ${GITHUB_EVENT_NAME} $(date -u +%Y-%m-%dT%H:%M)Z"
+          git push
