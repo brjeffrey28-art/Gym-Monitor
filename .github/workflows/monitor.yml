@@ -11,8 +11,8 @@ name: MuscleHut busy monitor
 
 on:
   schedule:
-    - cron: "*/15 4-23 * * 1-5"   # Mon-Fri polls (covers UK 05:00-23:00)
-    - cron: "*/15 5-20 * * 6,0"   # Sat-Sun polls (covers UK 06:00-20:00)
+    - cron: "7-59/15 4-23 * * 1-5"   # Mon-Fri: fires :07 :22 :37 :52
+    - cron: "7-59/15 5-20 * * 6,0"   # Sat-Sun: fires :07 :22 :37 :52
     - cron: "0 23 * * 0"     # Sundays 23:00 UTC: weekly report
   workflow_dispatch: {}      # enables the manual "Run workflow" button
 
