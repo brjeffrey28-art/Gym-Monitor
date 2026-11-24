@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MuscleHut Ashford busyness monitor.
+MuscleHut Ashford busyness monitor
 
 MuscleHut's ClubRight member site publicly exposes three goldmine data
 sources in one page, no login required:
